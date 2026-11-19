@@ -110,6 +110,7 @@ section{background:var(--card);border:1px solid var(--line);border-radius:var(--
 .links a span{display:block;font-weight:400;color:var(--mute);font-size:12px;margin-top:2px}
 footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-height:1.6}
 .skeleton{color:var(--dim);font-size:14px}
+.hero.loading{min-height:330px;display:grid;place-items:center}
 .preview-flag{background:#3a2a07;border:1px solid #6b4f12;color:var(--gold);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:14px}
 /* road */
 .road-status{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;font-weight:600;font-size:16px}
@@ -156,7 +157,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-he
     <a href="#now">New snow</a><a href="#conditions">Conditions</a><a href="#forecast">Forecast</a><a href="#cams">Cams</a><a href="#snowpack">Snowpack</a><a href="#avy">Avalanche</a><a href="#road">Road</a><a href="#links">Links</a>
   </nav>
 
-  <section class="hero" id="now"><div class="skeleton">Loading snow data…</div></section>
+  <section class="hero loading" id="now"><div class="skeleton">Loading snow data…</div></section>
   <div class="scene-wrap"><canvas id="scene" aria-label="Animated picture of today's snow depth at Wolf Creek Summit compared with normal"></canvas></div>
   <section id="conditions"></section>
   <section id="forecast"></section>
@@ -246,6 +247,7 @@ function renderHero(d) {
   } else html = '<div class="skeleton">Snow data unavailable right now.</div>';
   if (d.errors?.report && repFresh) html += `<p class="warn">Couldn't reach the ski area just now — showing the last report.</p>`;
   $('#now').innerHTML = html;
+  $('#now').classList.remove('loading');
 }
 function reportAgeHrs(r) {
   const t = Date.parse(String(r.updated || '').replace(/\s*-\s*(\d{1,2}:\d{2})/, ' $1'));
@@ -446,8 +448,9 @@ function sceneData(d) {
 }
 
 /* ---------- holiday mascots holding the snow stake ---------- */
-// Thanksgiving week (Sunday before through Sunday after) gets a turkey; Dec 15 – Jan 1 gets Santa.
-// To preview: add #turkey or #santa to the end of the app's address.
+// Thanksgiving week (Sunday before through Sunday after) gets a turkey; Dec 15 – Jan 1 gets Santa;
+// all of December gets Christmas lights wrapped around the stake.
+// To preview: add #turkey, #santa or #lights to the end of the app's address.
 function holidayNow() {
   const h = (location.hash || '').slice(1);
   if (h === 'turkey' || h === 'santa') return h;
@@ -458,6 +461,33 @@ function holidayNow() {
   if (m === 11 && d >= thanks - 4 && d <= thanks + 3) return 'turkey';
   if ((m === 12 && d >= 15) || (m === 1 && d === 1)) return 'santa';
   return null;
+}
+function lightsNow() {
+  const h = (location.hash || '').slice(1);
+  if (h === 'lights' || h === 'santa') return true;
+  if (h === 'turkey') return false;
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', month: 'numeric' }).format(new Date()) === '12';
+}
+// A string of bulbs spiralling around the stake; only the front of each loop shows.
+function drawLights(c, x, w, yTop, yBot, t, still) {
+  const cx = x + w / 2, R = w / 2 + 2, pitch = 20, cols = ['#ff4a4a', '#ffd23c', '#3ce07a', '#4aa8ff', '#ff8ae0'];
+  c.strokeStyle = '#1f4a2c'; c.lineWidth = 1.8; c.lineCap = 'round';
+  c.beginPath(); let on = false;
+  for (let y = yTop; y <= yBot; y += 1) {
+    const ph = (y - yTop) / pitch * Math.PI * 2, px = cx + R * Math.sin(ph);
+    if (Math.cos(ph) > 0) { on ? c.lineTo(px, y) : c.moveTo(px, y); on = true; } else on = false;
+  }
+  c.stroke();
+  let i = 0;
+  for (let k = 0; ; k++) {
+    const ph = Math.PI * (-0.35 + 0.35 * (k % 3)) + Math.floor(k / 3) * Math.PI * 2, y = yTop + ph / (Math.PI * 2) * pitch;
+    if (y > yBot) break; if (y < yTop) continue;
+    const px = cx + R * Math.sin(ph), col = cols[i++ % cols.length];
+    const a = still ? 1 : .55 + .45 * Math.sin(t * 3 + k * 1.9);
+    c.globalAlpha = a * .35; c.fillStyle = col; c.beginPath(); c.arc(px, y + 2.5, 7, 0, 7); c.fill();
+    c.globalAlpha = .6 + .4 * a; c.beginPath(); c.ellipse(px, y + 2.5, 2.8, 3.8, 0, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
 }
 function drawTurkey(c, x, base, s, t) {
   const bob = Math.sin(t * 2.2) * 1.5 * s, y = base + bob;
@@ -571,6 +601,8 @@ function drawScene(now) {
   for (let v = 0; v < maxIn; v += 6) { c.fillStyle = (v / 6) % 2 ? '#f4f7fb' : '#d8343f'; c.fillRect(stakeX, yIn(Math.min(maxIn, v + 6)), stakeW, yIn(v) - yIn(Math.min(maxIn, v + 6))); }
   if (S.depth != null) { c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.ellipse(stakeX + stakeW / 2, snowY + 3, stakeW * 1.6, 5, 0, 0, 7); c.fill(); }
 
+  if (lightsNow()) drawLights(c, stakeX, stakeW, yIn(maxIn) + 4, snowY - 2, t, reduceMotion.matches);
+
   if (holiday) {
     const base = Math.min(H - 6, Math.max(snowY + 4, top + 85 * ms)), mx = stakeX + stakeW + 26 * ms;
     (holiday === 'turkey' ? drawTurkey : drawSanta)(sctx, mx, base, ms, t);
@@ -634,10 +666,20 @@ addEventListener('pageshow', startLoop);
 addEventListener('resize', () => drawScene(performance.now()));
 startLoop();
 
+// Remember the last data on this phone so the app opens instantly instead of flashing "Loading…"
+const CACHE_KEY = 'wcsnow-data-v1';
+function cached() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
+let shownAt = null;
 async function go() {
-  try { render(await load()); }
-  catch (e) { $('#now').innerHTML = `<div class="skeleton">Couldn't load snow data (${esc(e.message)}). Try Refresh.</div>`; }
+  try {
+    const d = await load();
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); } catch (e) {}
+    if (d.generated !== shownAt || !d.generated) { shownAt = d.generated; render(d); }
+    else $('#stamp').textContent = 'Updated ' + ago(d.generated);
+  }
+  catch (e) { if (!shownAt) $('#now').innerHTML = `<div class="skeleton">Couldn't load snow data (${esc(e.message)}). Try Refresh.</div>`; }
 }
+{ const c = !window.__DATA__ && cached(); if (c && c.generated) { try { shownAt = c.generated; render(c); } catch (e) { shownAt = null; } } }
 $('#refresh').onclick = go;
 go();
 setInterval(go, 10 * 60e3);
