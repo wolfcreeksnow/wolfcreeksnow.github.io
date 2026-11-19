@@ -297,7 +297,7 @@ async function powderAlert(out, prev) {
   if (msg && topic && (msg.test || state.lastDate !== today)) {
     const res = await fetch('https://ntfy.sh/' + encodeURIComponent(topic), {
       method: 'POST', body: msg.body,
-      headers: { Title: msg.title.replace(/[^\x20-\x7E]/g, '').trim() || 'Wolf Creek powder alert', Tags: 'snowflake', Click: process.env.APP_URL || 'https://srhoades1761.github.io/wolf-creek-snow/' },
+      headers: { Title: msg.title.replace(/[^\x20-\x7E]/g, '').trim() || 'Wolf Creek powder alert', Tags: 'snowflake', Click: process.env.APP_URL || 'https://wolfcreeksnow.github.io/' },
     });
     console.log('alert', res.status, msg.title);
     if (res.ok && !msg.test) { state.lastDate = today; state.lastTitle = msg.title; state.lastSent = new Date().toISOString(); }
