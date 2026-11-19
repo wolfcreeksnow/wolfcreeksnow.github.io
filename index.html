@@ -316,7 +316,7 @@ function seasonChart(box, s) {
 function hourlyChart(box, pts) {
   const W = 700, H = 150, P = { l: 34, r: 8, t: 8, b: 22 };
   const ts = pts.map(p => Date.parse(p.t.replace(' ', 'T'))), vs = pts.map(p => p.depth);
-  const lo = Math.max(0, Math.min(...vs) - 2), hi = Math.max(...vs) + 2, t0 = ts[0], t1 = ts.at(-1);
+  const lo = Math.max(0, Math.min(...vs) - 2), hi = Math.max(...vs) + 2, t0 = ts[0], t1 = ts[ts.length - 1];
   const x = t => P.l + (W - P.l - P.r) * (t - t0) / (t1 - t0 || 1), y = v => H - P.b - (H - P.t - P.b) * (v - lo) / (hi - lo || 1);
   const d = pts.map((p, i) => (i ? 'L' : 'M') + x(ts[i]).toFixed(1) + ',' + y(vs[i]).toFixed(1)).join('');
   let g = svgEl(W, H);
@@ -454,14 +454,17 @@ function drawScene(now) {
   c.textAlign = 'left';
 
   // falling snow
-  const target = reduceMotion.matches ? 0 : Math.round(30 + S.intensity * (narrow ? 170 : 300));
+  // Reduce Motion (iPhone accessibility setting) gets a calmer snowfall rather than none
+  const calm = reduceMotion.matches;
+  const target = Math.round(calm ? 25 + S.intensity * 50 : 30 + S.intensity * (narrow ? 170 : 300));
   while (scene.flakes.length < target) scene.flakes.push({ x: Math.random() * W, y: Math.random() * H, r: .8 + Math.random() * 2.2, v: 18 + Math.random() * 36, ph: Math.random() * 6 });
   scene.flakes.length = Math.min(scene.flakes.length, target);
   const dt = Math.min(.05, (now - (scene.last || now)) / 1000); scene.last = now;
   const drift = (S.wind || 8) * 1.4;
   c.fillStyle = '#fff';
   scene.flakes.forEach(f => {
-    f.y += f.v * dt * (1 + f.r * .25); f.x += (drift * .5 + Math.sin(t * 1.2 + f.ph) * 12) * dt;
+    const k = calm ? .35 : 1;
+    f.y += f.v * dt * (1 + f.r * .25) * k; f.x += (drift * .5 + Math.sin(t * 1.2 + f.ph) * 12) * dt * k;
     if (f.y > snowY + 4 || f.y > H) { f.y = -4; f.x = Math.random() * (W + 60) - 60; }
     if (f.x > W + 5) f.x = -5;
     c.globalAlpha = .55 + f.r * .15; c.beginPath(); c.arc(f.x, f.y, f.r, 0, 7); c.fill();
@@ -482,10 +485,13 @@ function drawScene(now) {
   c.font = '600 11px Barlow, sans-serif'; c.textAlign = 'left'; c.textBaseline = 'top'; c.fillStyle = night ? 'rgba(238,245,252,.7)' : 'rgba(10,22,38,.7)';
   c.fillText('WOLF CREEK SUMMIT · 10,930 FT', 10, 9);
 }
-function sceneLoop(now) { drawScene(now); if (!reduceMotion.matches && !document.hidden) requestAnimationFrame(sceneLoop); }
-document.addEventListener('visibilitychange', () => { if (!document.hidden) requestAnimationFrame(sceneLoop); });
+let looping = false;
+function sceneLoop(now) { try { drawScene(now); } catch (e) { console.error(e); } if (document.hidden) { looping = false; return; } requestAnimationFrame(sceneLoop); }
+function startLoop() { if (!looping && !document.hidden) { looping = true; requestAnimationFrame(sceneLoop); } }
+document.addEventListener('visibilitychange', startLoop);
+addEventListener('pageshow', startLoop);
 addEventListener('resize', () => drawScene(performance.now()));
-requestAnimationFrame(sceneLoop);
+startLoop();
 
 async function go() {
   try { render(await load()); }
