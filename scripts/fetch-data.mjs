@@ -217,6 +217,94 @@ async function fetchAvalanche() {
   };
 }
 
+
+// ---------- 5. Wolf Creek Pass road status (CDOT COtrip public 511 feed, no key) ----------
+const CARS = 'https://api-511x-co.carsprogram.org/events/map-features?eventClassifications=';
+const ROAD_LAYERS = { closure: 'roadClosures', chains: 'chainLaws', winter: 'winterDriving', incident: 'roadReports', work: 'roadWork' };
+// US-160 between Pagosa Springs and South Fork (the pass summit is ~MP 168)
+const PASS = { minMp: 144, maxMp: 187, bbox: [-107.02, 37.30, -106.55, 37.72] };
+const stripHtml = s => String(s || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+function coordsOf(g) {
+  if (!g) return [];
+  if (g.type === 'Point') return [g.coordinates];
+  if (g.type === 'LineString' || g.type === 'MultiPoint') return g.coordinates;
+  if (g.type === 'MultiLineString' || g.type === 'Polygon') return g.coordinates.flat();
+  if (g.type === 'GeometryCollection') return g.geometries.flatMap(coordsOf);
+  return [];
+}
+function onPass(f) {
+  const p = f.properties || {}, loc = p.eventReport?.location || {};
+  const route = String(p.route || loc.routeDesignator || '');
+  const is160 = /\b160\b/.test(route);
+  const mps = ['primaryPoint', 'secondaryPoint'].map(k => loc[k]?.linearReference).filter(x => typeof x === 'number');
+  const [w, s, e, n] = PASS.bbox;
+  const inBox = coordsOf(f.geometry).some(([x, y]) => x >= w && x <= e && y >= s && y <= n);
+  if (is160 && mps.length) return Math.max(...mps) >= PASS.minMp && Math.min(...mps) <= PASS.maxMp;
+  if (is160) return inBox || /wolf creek/i.test(JSON.stringify(p).slice(0, 4000));
+  return false;
+}
+async function fetchRoad() {
+  const items = [], failed = [];
+  await Promise.all(Object.entries(ROAD_LAYERS).map(async ([kind, cls]) => {
+    try {
+      const r = await fetch(CARS + cls, { headers: { 'User-Agent': UA, Accept: 'application/json', 'content-language': 'en' } });
+      if (!r.ok) throw new Error(r.status);
+      const j = await r.json();
+      if (!j.features) throw new Error('no features');
+      for (const f of j.features) {
+        if (!onPass(f)) continue;
+        const p = f.properties || {}, er = p.eventReport || {}, d = er.eventDescription || {};
+        const loc = er.location || {};
+        const mps = ['primaryPoint', 'secondaryPoint'].map(k => loc[k]?.linearReference).filter(x => typeof x === 'number');
+        items.push({
+          kind, id: p.id ?? null, route: p.route || 'US-160',
+          title: stripHtml(p.title || d.descriptionHeader || p.eventType || kind),
+          detail: stripHtml(d.descriptionFull || p.description || '').slice(0, 400),
+          mp: mps.length ? mps.map(m => Math.round(m)).join('–') : null,
+          updated: p.updated ? new Date(p.updated).toISOString() : null,
+          link: p.id != null ? `https://www.cotrip.org/events/${p.id}` : 'https://www.cotrip.org/',
+        });
+      }
+    } catch (e) { failed.push(`${kind}: ${e.message}`); }
+  }));
+  if (failed.length === Object.keys(ROAD_LAYERS).length) throw new Error('CDOT feed unreachable — ' + failed.join('; '));
+  const order = { closure: 0, chains: 1, winter: 2, incident: 3, work: 4 };
+  items.sort((a, b) => order[a.kind] - order[b.kind]);
+  const seen = new Set();
+  const unique = items.filter(i => { const k = i.kind + i.id + i.title; if (seen.has(k)) return false; seen.add(k); return true; });
+  return {
+    items: unique, closed: unique.some(i => i.kind === 'closure'), chains: unique.some(i => i.kind === 'chains'),
+    partial: failed.length ? failed : undefined, link: 'https://www.cotrip.org/',
+  };
+}
+
+// ---------- 6. Powder alert (push notification via ntfy.sh) ----------
+// Set repo secret NTFY_TOPIC (and optionally repo variable ALERT_INCHES, default 6).
+async function powderAlert(out, prev) {
+  const topic = process.env.NTFY_TOPIC, min = Number(process.env.ALERT_INCHES || 6);
+  const state = { ...(prev.alerts || {}), threshold: min, enabled: !!topic };
+  const today = ymd(new Date());
+  const r = out.report, s = out.snotel?.sensor;
+  // the report's own date ("Nov 18, 2026 - 06:45"), read as written so time zones can't shift it
+  const m = String(r?.updated || '').match(/([A-Za-z]{3})[a-z]*\.? (\d{1,2}),? (\d{4})/);
+  const MON = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+  const repDate = m && MON[m[1]] ? `${m[3]}-${String(MON[m[1]]).padStart(2, '0')}-${m[2].padStart(2, '0')}` : null;
+  const repToday = r && !r.stale && r.h24 != null && repDate === today;
+  let msg = null;
+  if (process.env.TEST_ALERT === 'true') msg = { title: 'Test alert: Wolf Creek Snow Update', body: `Alerts are working. You'll get one when 24-hour new snow reaches ${min}".`, test: true };
+  else if (repToday && r.h24 >= min) msg = { title: `❄️ Wolf Creek: ${r.h24}" new in 24 hrs`, body: `Ski patrol report${r.updated ? ' (' + r.updated + ')' : ''}. 72 hrs: ${r.h72 ?? '–'}". Season: ${r.ytd ?? '–'}".` };
+  else if (!repToday && s?.depthGain24 >= min) msg = { title: `❄️ Wolf Creek summit: +${s.depthGain24}" in 24 hrs`, body: `Summit snow sensor (10,930 ft). Depth now ${s.depthNow ?? '–'}".` };
+  if (msg && topic && (msg.test || state.lastDate !== today)) {
+    const res = await fetch('https://ntfy.sh/' + encodeURIComponent(topic), {
+      method: 'POST', body: msg.body,
+      headers: { Title: msg.title.replace(/[^\x20-\x7E]/g, '').trim() || 'Wolf Creek powder alert', Tags: 'snowflake', Click: process.env.APP_URL || 'https://srhoades1761.github.io/wolf-creek-snow/' },
+    });
+    console.log('alert', res.status, msg.title);
+    if (res.ok && !msg.test) { state.lastDate = today; state.lastTitle = msg.title; state.lastSent = new Date().toISOString(); }
+  }
+  return state;
+}
+
 // ---------- run ----------
 import { pathToFileURL } from 'node:url';
 if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
@@ -225,11 +313,12 @@ export async function main() {
 let prev = {};
 try { prev = JSON.parse(await readFile(OUT, 'utf8')); } catch {}
 const out = { generated: new Date().toISOString(), errors: {} };
-const jobs = { report: fetchReport, snotel: fetchSnotel, forecast: fetchForecast, avalanche: fetchAvalanche };
+const jobs = { report: fetchReport, snotel: fetchSnotel, forecast: fetchForecast, avalanche: fetchAvalanche, road: fetchRoad };
 await Promise.all(Object.entries(jobs).map(async ([k, fn]) => {
   try { out[k] = await fn(); out[k].fetched = out.generated; }
   catch (e) { console.error(`[${k}]`, e.message); out.errors[k] = e.message; out[k] = prev[k] ? { ...prev[k], stale: true } : null; }
 }));
+try { out.alerts = await powderAlert(out, prev); } catch (e) { console.error('[alert]', e.message); out.alerts = prev.alerts; }
 await writeFile(OUT, JSON.stringify(out));
 console.log('wrote data.json', Object.keys(jobs).map(k => `${k}:${out.errors[k] ? 'FAIL' : 'ok'}`).join(' '));
 }
