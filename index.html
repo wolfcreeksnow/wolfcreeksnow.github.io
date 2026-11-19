@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wolf Creek Snow</title>
+<meta name="description" content="Unofficial live snow dashboard for Wolf Creek Ski Area and Wolf Creek Pass, Colorado: new snow, snowpack, forecast and avalanche danger.">
+<meta name="theme-color" content="#0a1626">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a1626; --bg2:#0f2036; --card:#13273f; --line:#22405f; --ink:#eef5fc; --mute:#93a9c2; --dim:#5f7894;
+  --ice:#7fd3ff; --ice2:#3aa8e8; --gold:#f2c14e; --last:#8496ad;
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:Barlow,system-ui,sans-serif;background:radial-gradient(1200px 600px at 50% -200px,#1c3a5e 0%,var(--bg) 60%) fixed,var(--bg);color:var(--ink);line-height:1.45;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 48px}
+.num,.h{font-family:"Barlow Condensed",sans-serif}
+a{color:var(--ice)}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:6px 2px 14px}
+.brand .h{font-size:30px;font-weight:700;letter-spacing:.02em;line-height:1}
+.brand .sub{color:var(--mute);font-size:13px;margin-top:4px}
+.badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);color:var(--mute);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.refresh{flex:none;background:var(--card);border:1px solid var(--line);color:var(--ink);font:600 13px Barlow,sans-serif;padding:8px 12px;border-radius:99px;cursor:pointer}
+.refresh:active{transform:scale(.97)}
+.stamp{font-size:12px;color:var(--dim);text-align:right;margin-top:6px}
+nav{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{flex:none;text-decoration:none;color:var(--mute);font-size:13px;font-weight:600;border:1px solid var(--line);border-radius:99px;padding:6px 12px;background:rgba(19,39,63,.6)}
+section{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 16px;margin-bottom:14px;scroll-margin-top:12px}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
+.kicker .src{letter-spacing:0;text-transform:none;font-weight:500;color:var(--dim)}
+/* hero */
+.hero{background:linear-gradient(160deg,#18406a 0%,#13273f 65%);text-align:center;padding:22px 16px 18px}
+.hero .big{font-size:96px;font-weight:700;line-height:.9;letter-spacing:-.01em}
+.hero .big small{font-size:56px;color:var(--ice);display:inline-block;vertical-align:top;line-height:1;margin-left:2px}
+.hero .lbl{font-size:14px;color:var(--mute);margin-top:4px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+.trio div{background:rgba(10,22,38,.45);border-radius:12px;padding:10px 4px}
+.trio .num{font-size:30px;font-weight:600;line-height:1}
+.trio span{display:block;font-size:12px;color:var(--mute);margin-top:4px}
+.depths{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.depths div{padding:6px 2px}
+.depths .num{font-size:24px;font-weight:600;color:var(--ice)}
+.depths span{display:block;font-size:12px;color:var(--mute)}
+.note{font-size:12.5px;color:var(--dim);margin-top:12px}
+.warn{font-size:13px;color:var(--gold);margin-top:10px}
+/* conditions */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+.kv span{display:block;font-size:12px;color:var(--mute)}
+.kv b{font-weight:600;font-size:15px}
+.surface{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:14.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font-size:12.5px;border-radius:99px;padding:3px 10px;border:1px solid var(--line);color:var(--mute)}
+.chip.open{border-color:#2f7d5a;color:#8fe0b5}
+/* forecast */
+.fc-total{display:flex;align-items:baseline;gap:8px}
+.fc-total .num{font-size:44px;font-weight:700;line-height:1}
+.fc-total span{color:var(--mute)}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:150px;margin-top:16px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.bar .v{font:600 15px "Barlow Condensed",sans-serif;margin-bottom:4px}
+.bar .col{width:100%;max-width:44px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--ice),var(--ice2));min-height:3px}
+.bar .col.zero{background:var(--line)}
+.bar .d{font-size:12px;color:var(--mute);margin-top:6px}
+.periods{margin-top:16px;border-top:1px solid var(--line)}
+.period{display:grid;grid-template-columns:110px 1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer}
+.period .n{font-weight:600}
+.period .t{font:600 16px "Barlow Condensed",sans-serif;text-align:right}
+.period .x{grid-column:1/-1;color:var(--mute);font-size:13.5px;display:none}
+.period.openp .x{display:block}
+.snowy{color:var(--ice)}
+/* snowpack */
+.pct{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.pct .num{font-size:56px;font-weight:700;line-height:.9}
+.pct .num small{font-size:26px;color:var(--mute)}
+.pct p{color:var(--mute);font-size:14px;max-width:340px}
+.toggle{display:inline-flex;background:var(--bg2);border:1px solid var(--line);border-radius:99px;padding:3px;margin:16px 0 8px}
+.toggle button{background:none;border:0;color:var(--mute);font:600 13px Barlow,sans-serif;padding:6px 14px;border-radius:99px;cursor:pointer}
+.toggle button.on{background:var(--ice2);color:#04121f}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--mute);margin-top:8px}
+.legend i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.tip{position:absolute;pointer-events:none;background:#06101c;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;white-space:nowrap;display:none;z-index:2}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stats3 div{background:var(--bg2);border-radius:12px;padding:10px}
+.stats3 .num{font-size:24px;font-weight:600}
+.stats3 span{display:block;font-size:12px;color:var(--mute)}
+/* avalanche */
+.avy{display:flex;gap:14px;align-items:center}
+.avy .lvl{flex:none;width:74px;height:74px;border-radius:14px;display:grid;place-items:center;font:700 40px "Barlow Condensed",sans-serif;color:#111}
+.avy .dn{font:700 26px "Barlow Condensed",sans-serif;text-transform:capitalize;line-height:1}
+.avy .z{color:var(--mute);font-size:13px;margin-top:2px}
+.avy-adv{margin-top:12px;font-size:14px}
+/* links */
+.links{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.links a{display:block;text-decoration:none;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--ink);font-weight:600;font-size:14px}
+.links a span{display:block;font-weight:400;color:var(--mute);font-size:12px;margin-top:2px}
+footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-height:1.6}
+.skeleton{color:var(--dim);font-size:14px}
+.preview-flag{background:#3a2a07;border:1px solid #6b4f12;color:var(--gold);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+.scene-wrap{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);margin-bottom:14px;background:#0d1d33}
+#scene{display:block;width:100%;height:300px}
+@media (min-width:640px){#scene{height:360px}}
+@media (min-width:640px){.hero .big{font-size:120px}.links{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="h">WOLF CREEK SNOW<span class="badge">Unofficial</span></div>
+      <div class="sub">Wolf Creek Ski Area &amp; Pass · 10,300–11,904 ft</div>
+    </div>
+    <div>
+      <button class="refresh" id="refresh">↻ Refresh</button>
+      <div class="stamp" id="stamp"></div>
+    </div>
+  </header>
+  <div id="flag"></div>
+  <nav>
+    <a href="#now">New snow</a><a href="#conditions">Conditions</a><a href="#forecast">Forecast</a><a href="#snowpack">Snowpack</a><a href="#avy">Avalanche</a><a href="#links">Links</a>
+  </nav>
+
+  <section class="hero" id="now"><div class="skeleton">Loading snow data…</div></section>
+  <div class="scene-wrap"><canvas id="scene" aria-label="Animated picture of today's snow depth at Wolf Creek Summit compared with normal"></canvas></div>
+  <section id="conditions"></section>
+  <section id="forecast"></section>
+  <section id="snowpack"></section>
+  <section id="avy"></section>
+  <section id="links">
+    <div class="kicker">Check before you go</div>
+    <div class="links">
+      <a href="https://wolfcreekski.com/wcs-snow-report/">Official snow report<span>wolfcreekski.com</span></a>
+      <a href="https://wolfcreekski.com/">Webcams &amp; lift status<span>wolfcreekski.com</span></a>
+      <a href="https://www.cotrip.org/">US-160 Wolf Creek Pass<span>CDOT road conditions</span></a>
+      <a href="https://avalanche.state.co.us/">Avalanche forecast<span>CAIC</span></a>
+      <a href="https://forecast.weather.gov/MapClick.php?lat=37.4722&lon=-106.7931">Point forecast<span>National Weather Service</span></a>
+      <a href="https://wcc.sc.egov.usda.gov/nwcc/site?sitenum=874">Summit SNOTEL<span>NRCS station 874</span></a>
+    </div>
+  </section>
+
+  <footer>
+    Unofficial, for fun and planning only — always confirm with Wolf Creek Ski Area, CDOT and CAIC.<br>
+    Data: Wolf Creek Ski Area snow report · USDA NRCS SNOTEL 874 · NOAA/National Weather Service · CAIC via avalanche.org.<br>
+    Refreshed automatically about every 30 minutes.
+  </footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = (v, d = 0) => v == null || isNaN(v) ? '—' : Number(v).toFixed(d).replace(/\.0$/, '');
+const inch = (v, d = 0) => v == null ? '—' : fmt(v, d) + '″';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ago = iso => { if (!iso) return ''; const m = Math.round((Date.now() - Date.parse(iso)) / 6e4); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} hr ago` : `${Math.round(m / 1440)} days ago`; };
+const DAY = 864e5;
+
+async function load() {
+  if (window.__DATA__) return window.__DATA__;
+  const r = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+  if (!r.ok) throw new Error('data.json ' + r.status);
+  return r.json();
+}
+
+function render(d) {
+  $('#stamp').textContent = d.generated ? 'Updated ' + ago(d.generated) : '';
+  if (d.preview) $('#flag').innerHTML = `<div class="preview-flag">${esc(d.preview)}</div>`;
+  scene.d = sceneData(d); drawScene(performance.now());
+  renderHero(d); renderConditions(d.report); renderForecast(d.forecast); renderSnowpack(d.snotel); renderAvy(d.avalanche);
+}
+
+/* ---------- hero: new snow ---------- */
+function renderHero(d) {
+  const r = d.report, s = d.snotel?.sensor;
+  // The ski area only updates its report in season; if it's more than 36h old, lead with the summit sensor.
+  const repFresh = r && !r.stale && r.h24 != null && reportAgeHrs(r) < 36;
+  let html = '';
+  if (repFresh) {
+    html = `<div class="kicker" style="justify-content:center">New snow · last 24 hours</div>
+      <div class="big num">${fmt(r.h24)}<small>″</small></div>
+      <div class="lbl">Ski patrol report${r.updated ? ' · ' + esc(r.updated) : ''}</div>
+      <div class="trio">
+        <div><div class="num">${inch(r.h48)}</div><span>48 hours</span></div>
+        <div><div class="num">${inch(r.h72)}</div><span>72 hours</span></div>
+        <div><div class="num">${inch(r.d7)}</div><span>7 days</span></div>
+      </div>
+      <div class="depths">
+        <div><div class="num">${inch(r.summit)}</div><span>Summit depth</span></div>
+        <div><div class="num">${inch(r.midway)}</div><span>Midway depth</span></div>
+        <div><div class="num">${inch(r.ytd)}</div><span>Season total</span></div>
+      </div>`;
+  } else if (s) {
+    html = `<div class="kicker" style="justify-content:center">Depth gain · last 24 hours</div>
+      <div class="big num">${fmt(s.depthGain24)}<small>″</small></div>
+      <div class="lbl">Wolf Creek Summit sensor (10,930 ft)</div>
+      <div class="trio">
+        <div><div class="num">${inch(s.depthGain72)}</div><span>72-hr gain</span></div>
+        <div><div class="num">${inch(s.depthNow)}</div><span>Depth now</span></div>
+        <div><div class="num">${fmt(s.tempNow)}°</div><span>Temp now</span></div>
+      </div>
+      <p class="note">The ski area's patrol report isn't current${r?.updated ? ` (last: ${esc(r.updated)})` : ''}, so this shows the automated summit sensor. Settling means it usually reads a little under true new snow.</p>`;
+  } else html = '<div class="skeleton">Snow data unavailable right now.</div>';
+  if (d.errors?.report && repFresh) html += `<p class="warn">Couldn't reach the ski area just now — showing the last report.</p>`;
+  $('#now').innerHTML = html;
+}
+function reportAgeHrs(r) {
+  const t = Date.parse(String(r.updated || '').replace(/\s*-\s*(\d{1,2}:\d{2})/, ' $1'));
+  return isNaN(t) ? 0 : (Date.now() - t) / 36e5;
+}
+
+/* ---------- conditions ---------- */
+function renderConditions(r) {
+  const el = $('#conditions');
+  if (!r) { el.innerHTML = '<div class="kicker">On the mountain</div><div class="skeleton">Ski area report unavailable.</div>'; return; }
+  const kv = (label, v) => v == null || v === '' ? '' : `<div class="kv"><span>${label}</span><b>${esc(v)}</b></div>`;
+  el.innerHTML = `<div class="kicker">On the mountain <span class="src">${r.patroller ? 'Patroller ' + esc(r.patroller) : ''}</span></div>
+    <div class="grid2">
+      ${kv('Skies', r.skies)}${kv('Temperature', r.temp != null ? r.temp + '°F' : null)}
+      ${kv('Yesterday high / overnight low', r.high != null || r.low != null ? `${fmt(r.high)}° / ${fmt(r.low)}°` : null)}
+      ${kv('Terrain open', r.pctOpen != null ? r.pctOpen + '%' : r.terrain != null ? r.terrain + '%' : null)}
+      ${kv('Lifts', r.lifts)}${kv('Skiable acres', r.acres != null ? r.acres.toLocaleString() : null)}
+      ${kv('Latest storm', r.latestStorm != null ? r.latestStorm + '″' : null)}${kv('Pick of the hill', r.pick)}
+      ${kv('Road', r.road)}
+    </div>
+    ${r.surface ? `<div class="surface">${esc(r.surface)}</div>` : ''}
+    ${r.hikeTo?.length ? `<div class="chips">${r.hikeTo.map(a => `<span class="chip ${/open/i.test(a.status) ? 'open' : ''}">${esc(a.name.replace(' Area', ''))}: ${esc(a.status)}</span>`).join('')}</div>` : ''}`;
+}
+
+/* ---------- forecast ---------- */
+function renderForecast(f) {
+  const el = $('#forecast');
+  if (!f) { el.innerHTML = '<div class="kicker">Forecast</div><div class="skeleton">Forecast unavailable.</div>'; return; }
+  const max = Math.max(4, ...f.daily.map(x => x.snow || 0));
+  const dname = iso => { const t = new Date(iso + 'T12:00:00'); const today = new Date(); today.setHours(12, 0, 0, 0); return Math.round((t - today) / DAY) === 0 ? 'Today' : t.toLocaleDateString('en-US', { weekday: 'short' }); };
+  el.innerHTML = `<div class="kicker">Next 7 days <span class="src">NWS · ${f.gridElevationFt ? f.gridElevationFt.toLocaleString() + ' ft' : 'ski area'}</span></div>
+    <div class="fc-total"><div class="num">${fmt(f.total7, 1)}″</div><span>of new snow forecast</span></div>
+    <div class="bars">${f.daily.map(x => `<div class="bar"><div class="v">${x.snow ? fmt(x.snow, 1) + '″' : ''}</div>
+      <div class="col ${x.snow ? '' : 'zero'}" style="height:${Math.max(2, (x.snow || 0) / max * 100)}%"></div><div class="d">${dname(x.date)}</div></div>`).join('')}</div>
+    <div class="periods">${f.periods.slice(0, 8).map(p => `<div class="period" onclick="this.classList.toggle('openp')">
+      <div class="n">${esc(p.name)}</div><div class="${/snow/i.test(p.short) ? 'snowy' : ''}">${esc(p.short)}${p.pop ? ` · ${p.pop}%` : ''}</div>
+      <div class="t">${p.temp}°</div><div class="x">${esc(p.detail)}${p.wind ? ` Wind ${esc(p.wind)}.` : ''}</div></div>`).join('')}</div>
+    <p class="note">Tap a day for the full forecast. Snow amounts are the NWS grid forecast for the ski area.</p>`;
+}
+
+/* ---------- snowpack ---------- */
+let spMode = 'swe';
+function renderSnowpack(s) {
+  const el = $('#snowpack');
+  if (!s) { el.innerHTML = '<div class="kicker">Snowpack</div><div class="skeleton">SNOTEL data unavailable.</div>'; return; }
+  const L = s.latest;
+  const pctTxt = L.pctMedian != null ? `${L.pctMedian}<small>%</small>` : '—';
+  const vsLast = L.sweLast ? Math.round(100 * L.swe / L.sweLast) : null;
+  el.innerHTML = `<div class="kicker">Snowpack <span class="src">${esc(s.station)}</span></div>
+    <div class="pct"><div class="num">${pctTxt}</div><p>of the normal (median) snow water for ${new Date(L.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${vsLast ? ` · ${vsLast}% of this date last season` : ''}.</p></div>
+    <div class="stats3">
+      <div><div class="num">${inch(L.depth)}</div><span>Snow depth</span></div>
+      <div><div class="num">${inch(L.swe, 1)}</div><span>Water in snow</span></div>
+      <div><div class="num">${inch(L.sweMedian, 1)}</div><span>Normal today</span></div>
+    </div>
+    <div class="toggle"><button data-m="swe">Snow water</button><button data-m="depth">Snow depth</button></div>
+    <div class="chart" id="spchart"><div class="tip"></div></div>
+    <div class="legend"><span><i style="background:var(--ice)"></i>This season</span><span><i style="background:var(--last)"></i>Last season</span><span><i style="background:var(--gold)"></i>5-season average</span><span><i style="background:repeating-linear-gradient(90deg,#cfe0f2 0 4px,transparent 4px 7px)"></i>Normal (median)</span></div>
+    ${s.sensor?.hourly?.length ? `<div class="kicker" style="margin-top:22px">Summit depth · last 4 days <span class="src">hourly sensor</span></div><div class="chart" id="hrchart"><div class="tip"></div></div>` : ''}`;
+  el.querySelectorAll('.toggle button').forEach(b => { b.classList.toggle('on', b.dataset.m === spMode); b.onclick = () => { spMode = b.dataset.m; renderSnowpack(s); }; });
+  seasonChart($('#spchart'), s);
+  if (s.sensor?.hourly?.length) hourlyChart($('#hrchart'), s.sensor.hourly);
+}
+
+function svgEl(w, h) { return `<svg viewBox="0 0 ${w} ${h}" role="img">`; }
+
+function seasonChart(box, s) {
+  const W = 700, H = 300, P = { l: 34, r: 8, t: 10, b: 26 };
+  const key = spMode, med = key + 'Median';
+  const cur = s.season.current[key], last = s.season.last[key], avg = s.season.avg5[key], norm = s.season.current[med];
+  const N = 274; // Oct 1 – Jun 30
+  const all = [cur, last, avg, norm].flatMap(a => a.slice(0, N)).filter(v => v != null);
+  const ymax = Math.max(key === 'swe' ? 10 : 30, ...all) * 1.08;
+  const x = i => P.l + (W - P.l - P.r) * i / (N - 1), y = v => H - P.b - (H - P.t - P.b) * v / ymax;
+  const path = a => { let d = '', on = false; for (let i = 0; i < N; i++) { const v = a[i]; if (v == null) { on = false; continue; } d += (on ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1); on = true; } return d; };
+  const start = Date.UTC(s.wy - 1, 9, 1);
+  const step = key === 'swe' ? (ymax > 30 ? 10 : 5) : (ymax > 120 ? 40 : 20);
+  let g = svgEl(W, H);
+  for (let v = 0; v <= ymax; v += step) g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#22405f" stroke-width="1"/><text x="${P.l - 6}" y="${y(v) + 4}" fill="#5f7894" font-size="11" text-anchor="end">${v}″</text>`;
+  ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].forEach((m, k) => { const i = Math.round((Date.UTC(s.wy - 1, 9 + k, 1) - start) / DAY); g += `<text x="${x(i) + 2}" y="${H - 8}" fill="#5f7894" font-size="11">${m}</text><line x1="${x(i)}" x2="${x(i)}" y1="${H - P.b}" y2="${H - P.b + 4}" stroke="#22405f"/>`; });
+  const today = Math.round((Date.now() - start) / DAY);
+  if (today > 0 && today < N) g += `<line x1="${x(today)}" x2="${x(today)}" y1="${P.t}" y2="${H - P.b}" stroke="#93a9c2" stroke-dasharray="2 4" stroke-width="1"/>`;
+  g += `<path d="${path(norm)}" fill="none" stroke="#cfe0f2" stroke-width="1.5" stroke-dasharray="5 4" opacity=".75"/>`;
+  g += `<path d="${path(last)}" fill="none" stroke="var(--last)" stroke-width="2"/>`;
+  g += `<path d="${path(avg)}" fill="none" stroke="var(--gold)" stroke-width="2.2"/>`;
+  g += `<path d="${path(cur)}" fill="none" stroke="var(--ice)" stroke-width="3.4" stroke-linecap="round"/>`;
+  g += `<line class="hair" x1="0" x2="0" y1="${P.t}" y2="${H - P.b}" stroke="#eef5fc" opacity="0" stroke-width="1"/><circle class="dot" r="5" fill="var(--ice)" opacity="0"/>`;
+  g += `<rect x="${P.l}" y="0" width="${W - P.l - P.r}" height="${H}" fill="transparent" class="hit"/></svg>`;
+  box.insertAdjacentHTML('beforeend', g);
+  const svg = box.querySelector('svg'), tip = box.querySelector('.tip'), hair = svg.querySelector('.hair'), dot = svg.querySelector('.dot');
+  const unit = key === 'swe' ? 1 : 0;
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = ((ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(N - 1, Math.round((px - P.l) / (W - P.l - P.r) * (N - 1))));
+    hair.setAttribute('x1', x(i)); hair.setAttribute('x2', x(i)); hair.setAttribute('opacity', .35);
+    if (cur[i] != null) { dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(cur[i])); dot.setAttribute('opacity', 1); } else dot.setAttribute('opacity', 0);
+    const date = new Date(start + i * DAY).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    tip.innerHTML = `<b>${date}</b><br><span style="color:var(--ice)">This season ${inch(cur[i], unit)}</span><br><span style="color:var(--last)">Last season ${inch(last[i], unit)}</span><br><span style="color:var(--gold)">5-season avg ${inch(avg[i], unit)}</span><br>Normal ${inch(norm[i], unit)}`;
+    tip.style.display = 'block';
+    const left = x(i) / W * r.width; tip.style.left = Math.min(r.width - tip.offsetWidth, Math.max(0, left - tip.offsetWidth / 2)) + 'px'; tip.style.top = '-8px';
+  };
+  const hide = () => { tip.style.display = 'none'; hair.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); };
+  svg.addEventListener('mousemove', move); svg.addEventListener('touchstart', move, { passive: true }); svg.addEventListener('touchmove', move, { passive: true });
+  svg.addEventListener('mouseleave', hide); svg.addEventListener('touchend', () => setTimeout(hide, 1800));
+}
+
+function hourlyChart(box, pts) {
+  const W = 700, H = 150, P = { l: 34, r: 8, t: 8, b: 22 };
+  const ts = pts.map(p => Date.parse(p.t.replace(' ', 'T'))), vs = pts.map(p => p.depth);
+  const lo = Math.max(0, Math.min(...vs) - 2), hi = Math.max(...vs) + 2, t0 = ts[0], t1 = ts.at(-1);
+  const x = t => P.l + (W - P.l - P.r) * (t - t0) / (t1 - t0 || 1), y = v => H - P.b - (H - P.t - P.b) * (v - lo) / (hi - lo || 1);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + x(ts[i]).toFixed(1) + ',' + y(vs[i]).toFixed(1)).join('');
+  let g = svgEl(W, H);
+  [lo, (lo + hi) / 2, hi].forEach(v => g += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#22405f"/><text x="${P.l - 6}" y="${y(v) + 4}" fill="#5f7894" font-size="11" text-anchor="end">${Math.round(v)}″</text>`);
+  const seen = new Set(); ts.forEach(t => { const dd = new Date(t); const k = dd.toDateString(); if (!seen.has(k) && dd.getHours() < 2) { seen.add(k); g += `<text x="${x(t) + 3}" y="${H - 6}" fill="#5f7894" font-size="11">${dd.toLocaleDateString('en-US', { weekday: 'short' })}</text><line x1="${x(t)}" x2="${x(t)}" y1="${P.t}" y2="${H - P.b}" stroke="#22405f" stroke-dasharray="2 4"/>`; } });
+  g += `<path d="${d}L${x(t1)},${H - P.b}L${x(t0)},${H - P.b}Z" fill="rgba(127,211,255,.12)"/><path d="${d}" fill="none" stroke="var(--ice)" stroke-width="2.5"/></svg>`;
+  box.insertAdjacentHTML('beforeend', g);
+}
+
+/* ---------- avalanche ---------- */
+function renderAvy(a) {
+  const el = $('#avy');
+  const colors = { 1: '#50b848', 2: '#fff200', 3: '#f7941e', 4: '#ed1c24', 5: '#231f20' };
+  if (!a) { el.innerHTML = '<div class="kicker">Avalanche danger</div><div class="skeleton">Forecast unavailable — check <a href="https://avalanche.state.co.us/">CAIC</a>.</div>'; return; }
+  const lvl = a.level > 0 ? a.level : null;
+  el.innerHTML = `<div class="kicker">Avalanche danger <span class="src">CAIC</span></div>
+    <div class="avy"><div class="lvl" style="background:${colors[lvl] || '#3a4f68'};color:${lvl === 5 ? '#fff' : '#111'}">${lvl ?? '–'}</div>
+      <div><div class="dn">${lvl ? esc(a.danger) : a.offSeason ? 'Off season' : 'No rating'}</div><div class="z">${esc(a.zone)}</div></div></div>
+    ${a.advice ? `<div class="avy-adv">${esc(a.advice)}</div>` : ''}
+    <p class="note">Backcountry only — the ski area does its own control work. <a href="${esc(a.link)}">Read the full forecast →</a></p>`;
+}
+
+/* ---------- animated scene: snow stake at the summit ---------- */
+const scene = { d: null, flakes: [] };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const cv = $('#scene'), sctx = cv.getContext('2d');
+// fixed pseudo-random shapes so the mountains don't jump around between frames
+const rnd = (s => () => (s = (s * 16807) % 2147483647) / 2147483647)(42);
+const RIDGE_FAR = Array.from({ length: 14 }, () => rnd());
+const RIDGE_NEAR = Array.from({ length: 10 }, () => rnd());
+const TREES = Array.from({ length: 26 }, () => ({ x: rnd(), h: .55 + rnd() * .6, w: .8 + rnd() * .5, row: rnd() < .45 ? 0 : 1 }));
+const STARS = Array.from({ length: 60 }, () => ({ x: rnd(), y: rnd() * .55, r: .4 + rnd() * 1.1, p: rnd() * 6 }));
+
+function sceneData(d) {
+  const s = d?.snotel, L = s?.latest, i = L?.date ? Math.round((Date.parse(L.date + 'T00:00:00Z') - Date.UTC(s.wy - 1, 9, 1)) / DAY) : -1;
+  const at = a => (i >= 0 && a ? a[i] : null);
+  const r = d?.report, fresh = r && !r.stale && r.h24 != null && reportAgeHrs(r) < 36;
+  const p0 = d?.forecast?.periods?.[0]?.short || '';
+  const snowingNow = /snow/i.test(p0) && !/chance|slight/i.test(p0);
+  const intensity = /heavy/i.test(p0) ? 1 : snowingNow ? .65 : /snow/i.test(p0) ? .3 : (s?.sensor?.depthGain24 > 0 ? .2 : .06);
+  const wind = Number((d?.forecast?.periods?.[0]?.wind || '').match(/(\d+)\s*mph/)?.[1] || 8);
+  return {
+    depth: L?.depth ?? s?.sensor?.depthNow ?? null,
+    refs: [
+      { label: 'Normal', v: L?.depthMedian ?? at(s?.season?.current?.depthMedian), color: '#cfe0f2', dash: [5, 4] },
+      { label: '5-season avg', v: at(s?.season?.avg5?.depth), color: '#f2c14e', dash: [] },
+      { label: 'Last season', v: at(s?.season?.last?.depth), color: '#8496ad', dash: [2, 3] },
+    ].filter(x => x.v != null),
+    newSnow: fresh ? r.h24 : s?.sensor?.depthGain24 ?? 0,
+    intensity, wind: Math.min(40, wind), forecastShort: p0,
+  };
+}
+
+function drawScene(now) {
+  const t = now / 1000;
+  const dpr = Math.min(devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const c = sctx; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const S = scene.d || {}, narrow = W < 520;
+  const padL = narrow ? 34 : 44, top = 30, bottom = H - 10;
+  const maxIn = Math.max(48, ...[S.depth, ...(S.refs || []).map(r => r.v)].filter(v => v != null).map(v => v * 1.35));
+  const yIn = v => bottom - (bottom - top) * v / maxIn;
+
+  // sky: night vs day in Mountain time
+  const hr = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', hour: 'numeric', hour12: false }).format(new Date())) % 24;
+  const night = hr < 6 || hr >= 18;
+  const g = c.createLinearGradient(0, 0, 0, H);
+  if (night) { g.addColorStop(0, '#071222'); g.addColorStop(1, '#1b3556'); } else { g.addColorStop(0, '#5d8fc4'); g.addColorStop(1, '#bcd6ee'); }
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  if (night && S.intensity < .5) STARS.forEach(s => { c.globalAlpha = .35 + .35 * Math.sin(t * 1.5 + s.p); c.fillStyle = '#fff'; c.beginPath(); c.arc(s.x * W, s.y * H, s.r, 0, 7); c.fill(); });
+  c.globalAlpha = 1;
+  // storm clouds when it's snowing
+  if (S.intensity > .25) { c.fillStyle = night ? 'rgba(40,55,75,.55)' : 'rgba(120,135,155,.45)'; for (let k = 0; k < 5; k++) { const cx = ((k * .27 + t * .006 * (1 + k * .2)) % 1.3 - .15) * W; c.beginPath(); c.ellipse(cx, 18 + (k % 2) * 14, W * .22, 22, 0, 0, 7); c.fill(); } }
+
+  // mountains (San Juans) with snowcaps
+  const ridge = (arr, base, amp, col, cap) => {
+    const pts = arr.map((v, i) => [i / (arr.length - 1) * W, base - v * amp]);
+    c.fillStyle = col; c.beginPath(); c.moveTo(0, H); pts.forEach(p => c.lineTo(...p)); c.lineTo(W, H); c.fill();
+    if (cap) { c.fillStyle = cap; pts.forEach((p, i) => { if (arr[i] > .55) { c.beginPath(); c.moveTo(p[0] - 18, p[1] + 14); c.lineTo(p[0], p[1]); c.lineTo(p[0] + 18, p[1] + 14); c.fill(); } }); }
+  };
+  ridge(RIDGE_FAR, H * .52, H * .3, night ? '#22395a' : '#7d9bbd', night ? '#5d7799' : '#eef5fc');
+  ridge(RIDGE_NEAR, H * .66, H * .18, night ? '#1a2d47' : '#5f7f9f', night ? '#4a6383' : '#dfeaf5');
+
+  // pine trees, partly buried
+  const snowY = S.depth != null ? yIn(S.depth) : bottom;
+  TREES.forEach(tr => {
+    const x = tr.x * W, baseY = snowY + (tr.row ? 14 : 6), th = (tr.row ? 64 : 42) * tr.h * (H / 320), tw = th * .42 * tr.w;
+    c.fillStyle = tr.row ? (night ? '#0f2a24' : '#24493d') : (night ? '#15302c' : '#3b5f52');
+    for (let k = 0; k < 3; k++) { const yy = baseY - th * (k * .28); c.beginPath(); c.moveTo(x - tw * (1 - k * .22) / 2, yy); c.lineTo(x, yy - th * .52); c.lineTo(x + tw * (1 - k * .22) / 2, yy); c.fill(); }
+    c.fillStyle = 'rgba(238,245,252,.8)'; c.beginPath(); c.moveTo(x - 4, baseY - th * .62); c.lineTo(x, baseY - th * .82); c.lineTo(x + 4, baseY - th * .62); c.fill();
+  });
+
+  // the snowpack, filled to today's depth with a gently drifting surface
+  if (S.depth != null) {
+    const sg = c.createLinearGradient(0, snowY - 10, 0, H);
+    sg.addColorStop(0, '#ffffff'); sg.addColorStop(.25, '#e3eef9'); sg.addColorStop(1, '#a9c4df');
+    c.fillStyle = sg; c.beginPath(); c.moveTo(0, H);
+    for (let x = 0; x <= W; x += 6) c.lineTo(x, snowY + Math.sin(x * .025 + t * .35) * 2.2 + Math.sin(x * .011 - t * .2) * 3);
+    c.lineTo(W, H); c.fill();
+    // sparkle
+    if (!reduceMotion.matches) for (let k = 0; k < 14; k++) { const sx = (k * 97.3 % 1) * W || (k / 14) * W, ph = (t * .8 + k * .37) % 1; c.globalAlpha = Math.max(0, Math.sin(ph * Math.PI)) * .9; c.fillStyle = '#fff'; c.fillRect(((k * 0.618) % 1) * W, snowY + 8 + (k % 5) * 9, 1.6, 1.6); }
+    c.globalAlpha = 1;
+  }
+
+  // snow stake (red & white) on the right
+  const stakeW = narrow ? 10 : 12, stakeX = W - stakeW - (narrow ? 16 : 26);
+  for (let v = 0; v < maxIn; v += 6) { c.fillStyle = (v / 6) % 2 ? '#f4f7fb' : '#d8343f'; c.fillRect(stakeX, yIn(Math.min(maxIn, v + 6)), stakeW, yIn(v) - yIn(Math.min(maxIn, v + 6))); }
+  if (S.depth != null) { c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.ellipse(stakeX + stakeW / 2, snowY + 3, stakeW * 1.6, 5, 0, 0, 7); c.fill(); }
+
+  // inch scale on the left
+  c.font = '600 11px Barlow, sans-serif'; c.textAlign = 'right'; c.textBaseline = 'middle';
+  const step = maxIn > 120 ? 24 : maxIn > 72 ? 12 : 12;
+  for (let v = 0; v <= maxIn; v += step) { const y = yIn(v); if (y < top + 6) continue; c.fillStyle = 'rgba(10,22,38,.55)'; c.fillRect(0, y - 8, padL - 4, 16); c.fillStyle = '#eef5fc'; c.fillText(v + '″', padL - 8, y); }
+
+  // reference lines, labels right-aligned beside the stake and nudged apart so they never overlap
+  const refs = (S.refs || []).map(r => ({ ...r, y: yIn(r.v) })).sort((a, b) => a.y - b.y);
+  refs.forEach(r => { c.strokeStyle = r.color; c.lineWidth = 1.5; c.setLineDash(r.dash); c.beginPath(); c.moveTo(padL, r.y); c.lineTo(stakeX - 4, r.y); c.stroke(); });
+  c.setLineDash([]);
+  for (let k = 1; k < refs.length; k++) refs[k].ly = Math.max(refs[k].y, (refs[k - 1].ly ?? refs[k - 1].y) + 20);
+  if (refs[0]) refs[0].ly = refs[0].y;
+  c.font = '600 12px Barlow, sans-serif'; c.textAlign = 'right';
+  refs.forEach(r => {
+    const txt = `${r.label} ${Math.round(r.v)}″`, tw = c.measureText(txt).width, rx = stakeX - 10;
+    c.fillStyle = 'rgba(10,22,38,.82)'; c.fillRect(rx - tw - 6, r.ly - 9, tw + 12, 18); c.fillStyle = r.color; c.fillText(txt, rx, r.ly);
+  });
+  c.textAlign = 'left';
+
+  // falling snow
+  const target = reduceMotion.matches ? 0 : Math.round(30 + S.intensity * (narrow ? 170 : 300));
+  while (scene.flakes.length < target) scene.flakes.push({ x: Math.random() * W, y: Math.random() * H, r: .8 + Math.random() * 2.2, v: 18 + Math.random() * 36, ph: Math.random() * 6 });
+  scene.flakes.length = Math.min(scene.flakes.length, target);
+  const dt = Math.min(.05, (now - (scene.last || now)) / 1000); scene.last = now;
+  const drift = (S.wind || 8) * 1.4;
+  c.fillStyle = '#fff';
+  scene.flakes.forEach(f => {
+    f.y += f.v * dt * (1 + f.r * .25); f.x += (drift * .5 + Math.sin(t * 1.2 + f.ph) * 12) * dt;
+    if (f.y > snowY + 4 || f.y > H) { f.y = -4; f.x = Math.random() * (W + 60) - 60; }
+    if (f.x > W + 5) f.x = -5;
+    c.globalAlpha = .55 + f.r * .15; c.beginPath(); c.arc(f.x, f.y, f.r, 0, 7); c.fill();
+  });
+  c.globalAlpha = 1;
+
+  // "Now" label riding on the snow surface
+  if (S.depth != null) {
+    const txt = `Now ${Math.round(S.depth)}″ deep`, sub = S.newSnow > 0 ? `+${fmt(S.newSnow)}″ in 24 hrs` : '';
+    c.font = '700 17px "Barlow Condensed", sans-serif'; const tw = Math.max(c.measureText(txt).width, sub ? c.measureText(sub).width : 0);
+    const lx = padL + 10, ly = Math.max(top + 4, snowY - (sub ? 46 : 32));
+    c.fillStyle = 'rgba(10,22,38,.82)'; c.beginPath(); c.roundRect ? c.roundRect(lx, ly, tw + 18, sub ? 40 : 26, 8) : c.rect(lx, ly, tw + 18, sub ? 40 : 26); c.fill();
+    c.fillStyle = '#ffffff'; c.textBaseline = 'top'; c.fillText(txt, lx + 9, ly + 5);
+    if (sub) { c.font = '600 13px Barlow, sans-serif'; c.fillStyle = '#7fd3ff'; c.fillText(sub, lx + 9, ly + 23); }
+  } else {
+    c.font = '600 15px Barlow, sans-serif'; c.textAlign = 'center'; c.fillStyle = '#eef5fc'; c.fillText('Loading snow depth…', W / 2, H / 2);
+  }
+  c.font = '600 11px Barlow, sans-serif'; c.textAlign = 'left'; c.textBaseline = 'top'; c.fillStyle = night ? 'rgba(238,245,252,.7)' : 'rgba(10,22,38,.7)';
+  c.fillText('WOLF CREEK SUMMIT · 10,930 FT', 10, 9);
+}
+function sceneLoop(now) { drawScene(now); if (!reduceMotion.matches && !document.hidden) requestAnimationFrame(sceneLoop); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) requestAnimationFrame(sceneLoop); });
+addEventListener('resize', () => drawScene(performance.now()));
+requestAnimationFrame(sceneLoop);
+
+async function go() {
+  try { render(await load()); }
+  catch (e) { $('#now').innerHTML = `<div class="skeleton">Couldn't load snow data (${esc(e.message)}). Try Refresh.</div>`; }
+}
+$('#refresh').onclick = go;
+go();
+setInterval(go, 10 * 60e3);
+</script>
+</body>
+</html>
