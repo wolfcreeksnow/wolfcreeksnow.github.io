@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Wolf Creek Snow</title>
+<title>Wolf Creek Snow Update</title>
 <meta name="description" content="Unofficial live snow dashboard for Wolf Creek Ski Area and Wolf Creek Pass, Colorado: new snow, snowpack, forecast and avalanche danger.">
 <meta name="theme-color" content="#0a1626">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -114,7 +114,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-he
 <div class="wrap">
   <header>
     <div class="brand">
-      <div class="h">WOLF CREEK SNOW<span class="badge">Unofficial</span></div>
+      <div class="h">WOLF CREEK SNOW UPDATE<span class="badge">Unofficial</span></div>
       <div class="sub">Wolf Creek Ski Area &amp; Pass · 10,300–11,904 ft</div>
     </div>
     <div>
@@ -350,6 +350,14 @@ const RIDGE_NEAR = Array.from({ length: 10 }, () => rnd());
 const TREES = Array.from({ length: 26 }, () => ({ x: rnd(), h: .55 + rnd() * .6, w: .8 + rnd() * .5, row: rnd() < .45 ? 0 : 1 }));
 const STARS = Array.from({ length: 60 }, () => ({ x: rnd(), y: rnd() * .55, r: .4 + rnd() * 1.1, p: rnd() * 6 }));
 
+// SNOTEL publishes a normal (median) for snow water but usually not for depth.
+// When depth has no normal, estimate it from the snow-water normal at today's snow density.
+function normalDepth(L, medDepth) {
+  const base = { color: '#cfe0f2', dash: [5, 4] };
+  if (L?.depthMedian != null || medDepth != null) return { ...base, label: 'Normal', v: L?.depthMedian ?? medDepth };
+  if (L?.sweMedian && L?.swe && L?.depth) return { ...base, label: 'Normal (est.)', v: L.sweMedian * L.depth / L.swe };
+  return { ...base, v: null };
+}
 function sceneData(d) {
   const s = d?.snotel, L = s?.latest, i = L?.date ? Math.round((Date.parse(L.date + 'T00:00:00Z') - Date.UTC(s.wy - 1, 9, 1)) / DAY) : -1;
   const at = a => (i >= 0 && a ? a[i] : null);
@@ -361,7 +369,7 @@ function sceneData(d) {
   return {
     depth: L?.depth ?? s?.sensor?.depthNow ?? null,
     refs: [
-      { label: 'Normal', v: L?.depthMedian ?? at(s?.season?.current?.depthMedian), color: '#cfe0f2', dash: [5, 4] },
+      normalDepth(L, at(s?.season?.current?.depthMedian)),
       { label: '5-season avg', v: at(s?.season?.avg5?.depth), color: '#f2c14e', dash: [] },
       { label: 'Last season', v: at(s?.season?.last?.depth), color: '#8496ad', dash: [2, 3] },
     ].filter(x => x.v != null),
