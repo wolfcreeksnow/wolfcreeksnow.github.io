@@ -6,6 +6,13 @@
 <title>Wolf Creek Snow Update</title>
 <meta name="description" content="Unofficial live snow dashboard for Wolf Creek Ski Area and Wolf Creek Pass, Colorado: new snow, snowpack, forecast and avalanche danger.">
 <meta name="theme-color" content="#0a1626">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WC Snow">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -104,6 +111,27 @@ section{background:var(--card);border:1px solid var(--line);border-radius:var(--
 footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-height:1.6}
 .skeleton{color:var(--dim);font-size:14px}
 .preview-flag{background:#3a2a07;border:1px solid #6b4f12;color:var(--gold);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:14px}
+/* road */
+.road-status{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;font-weight:600;font-size:16px}
+.road-status i{flex:none;width:12px;height:12px;border-radius:50%}
+.rs-ok{background:rgba(47,125,90,.18);color:#8fe0b5}.rs-ok i{background:#3ccf8e}
+.rs-winter{background:rgba(242,193,78,.14);color:#f2c14e}.rs-winter i{background:#f2c14e}
+.rs-chains{background:rgba(247,148,30,.16);color:#ffb15c}.rs-chains i{background:#f7941e}
+.rs-closed{background:rgba(237,28,36,.18);color:#ff8a8f}.rs-closed i{background:#ed1c24}
+.road-item{padding:12px 0;border-bottom:1px solid var(--line);font-size:14px}
+.road-item:last-child{border-bottom:0}
+.road-item .t{font-weight:600}
+.road-item .m{color:var(--mute);font-size:12.5px;margin-top:3px}
+.road-item p{color:var(--mute);font-size:13.5px;margin-top:4px}
+.tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:1px 7px;margin-right:6px;vertical-align:1px;background:var(--bg2);color:var(--mute)}
+.tag.closure{background:#5b1418;color:#ff8a8f}.tag.chains{background:#5a3408;color:#ffb15c}.tag.winter{background:#4a3a0b;color:#f2c14e}
+/* cams */
+.cams{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cam{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;color:var(--ink);font:inherit;cursor:pointer;text-align:center}
+.cam b{display:block;font-size:14px}.cam span{display:block;font-size:11.5px;color:var(--mute);margin-top:2px}
+.cam.on{border-color:var(--ice2);background:#123456}
+#camview .frame{position:relative;width:100%;aspect-ratio:16/9;margin-top:12px;border-radius:12px;overflow:hidden;background:#000}
+#camview iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .scene-wrap{border-radius:var(--r);overflow:hidden;border:1px solid var(--line);margin-bottom:14px;background:#0d1d33}
 #scene{display:block;width:100%;height:300px}
 @media (min-width:640px){#scene{height:360px}}
@@ -124,13 +152,23 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-he
   </header>
   <div id="flag"></div>
   <nav>
-    <a href="#now">New snow</a><a href="#conditions">Conditions</a><a href="#forecast">Forecast</a><a href="#snowpack">Snowpack</a><a href="#avy">Avalanche</a><a href="#links">Links</a>
+    <a href="#now">New snow</a><a href="#conditions">Conditions</a><a href="#road">Road</a><a href="#forecast">Forecast</a><a href="#cams">Cams</a><a href="#snowpack">Snowpack</a><a href="#avy">Avalanche</a><a href="#links">Links</a>
   </nav>
 
   <section class="hero" id="now"><div class="skeleton">Loading snow data…</div></section>
   <div class="scene-wrap"><canvas id="scene" aria-label="Animated picture of today's snow depth at Wolf Creek Summit compared with normal"></canvas></div>
+  <section id="road"></section>
   <section id="conditions"></section>
   <section id="forecast"></section>
+  <section id="cams">
+    <div class="kicker">Live webcams <span class="src">Wolf Creek Ski Area</span></div>
+    <div class="cams">
+      <button class="cam" data-cam="wolfcreeksummit"><b>Summit</b><span>Tap to watch live</span></button>
+      <button class="cam" data-cam="wolfcreektreasure"><b>Base area</b><span>Tap to watch live</span></button>
+      <button class="cam" data-cam="wolfcreektresurlift"><b>Treasure lift</b><span>Tap to watch live</span></button>
+    </div>
+    <div id="camview"></div>
+  </section>
   <section id="snowpack"></section>
   <section id="avy"></section>
   <section id="links">
@@ -147,7 +185,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-he
 
   <footer>
     Unofficial, for fun and planning only — always confirm with Wolf Creek Ski Area, CDOT and CAIC.<br>
-    Data: Wolf Creek Ski Area snow report · USDA NRCS SNOTEL 874 · NOAA/National Weather Service · CAIC via avalanche.org.<br>
+    Data: Wolf Creek Ski Area snow report &amp; webcams · USDA NRCS SNOTEL 874 · NOAA/National Weather Service · CAIC via avalanche.org · CDOT COtrip.<br>
     Refreshed automatically about every 30 minutes.
   </footer>
 </div>
@@ -171,7 +209,7 @@ function render(d) {
   $('#stamp').textContent = d.generated ? 'Updated ' + ago(d.generated) : '';
   if (d.preview) $('#flag').innerHTML = `<div class="preview-flag">${esc(d.preview)}</div>`;
   scene.d = sceneData(d); drawScene(performance.now());
-  renderHero(d); renderConditions(d.report); renderForecast(d.forecast); renderSnowpack(d.snotel); renderAvy(d.avalanche);
+  renderHero(d); renderRoad(d.road); renderConditions(d.report); renderForecast(d.forecast); renderSnowpack(d.snotel); renderAvy(d.avalanche);
 }
 
 /* ---------- hero: new snow ---------- */
@@ -212,6 +250,34 @@ function reportAgeHrs(r) {
   const t = Date.parse(String(r.updated || '').replace(/\s*-\s*(\d{1,2}:\d{2})/, ' $1'));
   return isNaN(t) ? 0 : (Date.now() - t) / 36e5;
 }
+
+/* ---------- Wolf Creek Pass road ---------- */
+function renderRoad(rd) {
+  const el = $('#road');
+  const head = `<div class="kicker">Wolf Creek Pass · US-160 <span class="src">CDOT</span></div>`;
+  if (!rd) { el.innerHTML = head + '<div class="skeleton">Road info unavailable — check <a href="https://www.cotrip.org/">COtrip</a>.</div>'; return; }
+  const winter = rd.items.some(i => i.kind === 'winter');
+  const [cls, text] = rd.closed ? ['rs-closed', 'Closure reported on the pass'] : rd.chains ? ['rs-chains', 'Chain / traction law in effect'] : winter ? ['rs-winter', 'Winter driving conditions'] : ['rs-ok', 'No closures or chain law reported'];
+  const label = { closure: 'Closed', chains: 'Chain law', winter: 'Conditions', incident: 'Incident', work: 'Road work' };
+  el.innerHTML = head + `<div class="road-status ${cls}"><i></i>${text}</div>
+    ${rd.items.length ? `<div style="margin-top:6px">${rd.items.slice(0, 6).map(i => `<div class="road-item">
+      <div class="t"><span class="tag ${i.kind}">${label[i.kind] || i.kind}</span>${esc(i.title)}</div>
+      ${i.detail && i.detail !== i.title ? `<p>${esc(i.detail)}</p>` : ''}
+      <div class="m">${i.mp ? 'Mile ' + esc(i.mp) + ' · ' : ''}${i.updated ? 'updated ' + ago(i.updated) + ' · ' : ''}<a href="${esc(i.link)}">Details</a></div></div>`).join('')}</div>` : ''}
+    <p class="note">US-160 between Pagosa Springs and South Fork, from CDOT's COtrip feed${rd.fetched ? ', checked ' + ago(rd.fetched) : ''}${rd.stale ? ' (last good check)' : ''}. Always confirm at <a href="https://www.cotrip.org/">COtrip.org</a> or 511.</p>`;
+}
+
+/* ---------- webcams (load only when tapped, to save data) ---------- */
+document.querySelectorAll('.cam').forEach(b => b.onclick = () => {
+  const on = b.classList.contains('on');
+  document.querySelectorAll('.cam').forEach(x => x.classList.remove('on'));
+  const v = $('#camview');
+  if (on) { v.innerHTML = ''; return; }
+  b.classList.add('on');
+  const url = 'https://live2.brownrice.com/embed/' + b.dataset.cam;
+  v.innerHTML = `<div class="frame"><iframe src="${url}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy" title="${esc(b.querySelector('b').textContent)} webcam"></iframe></div>
+    <p class="note">Live stream from Wolf Creek Ski Area. Not loading? <a href="${url}">Open it full screen</a>.</p>`;
+});
 
 /* ---------- conditions ---------- */
 function renderConditions(r) {
