@@ -152,12 +152,11 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-he
   </header>
   <div id="flag"></div>
   <nav>
-    <a href="#now">New snow</a><a href="#conditions">Conditions</a><a href="#road">Road</a><a href="#forecast">Forecast</a><a href="#cams">Cams</a><a href="#snowpack">Snowpack</a><a href="#avy">Avalanche</a><a href="#links">Links</a>
+    <a href="#now">New snow</a><a href="#conditions">Conditions</a><a href="#forecast">Forecast</a><a href="#cams">Cams</a><a href="#snowpack">Snowpack</a><a href="#avy">Avalanche</a><a href="#road">Road</a><a href="#links">Links</a>
   </nav>
 
   <section class="hero" id="now"><div class="skeleton">Loading snow data…</div></section>
   <div class="scene-wrap"><canvas id="scene" aria-label="Animated picture of today's snow depth at Wolf Creek Summit compared with normal"></canvas></div>
-  <section id="road"></section>
   <section id="conditions"></section>
   <section id="forecast"></section>
   <section id="cams">
@@ -171,6 +170,7 @@ footer{color:var(--dim);font-size:12px;text-align:center;margin-top:24px;line-he
   </section>
   <section id="snowpack"></section>
   <section id="avy"></section>
+  <section id="road"></section>
   <section id="links">
     <div class="kicker">Check before you go</div>
     <div class="links">
@@ -444,6 +444,74 @@ function sceneData(d) {
   };
 }
 
+/* ---------- holiday mascots holding the snow stake ---------- */
+// Thanksgiving week (Sunday before through Sunday after) gets a turkey; Dec 15 – Jan 1 gets Santa.
+// To preview: add #turkey or #santa to the end of the app's address.
+function holidayNow() {
+  const h = (location.hash || '').slice(1);
+  if (h === 'turkey' || h === 'santa') return h;
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date()).map(x => [x.type, +x.value]));
+  const { year: y, month: m, day: d } = p;
+  const nov1 = new Date(Date.UTC(y, 10, 1)).getUTCDay();              // 0 = Sunday
+  const thanks = 1 + ((4 - nov1 + 7) % 7) + 21;                        // 4th Thursday of November
+  if (m === 11 && d >= thanks - 4 && d <= thanks + 3) return 'turkey';
+  if ((m === 12 && d >= 15) || (m === 1 && d === 1)) return 'santa';
+  return null;
+}
+function drawTurkey(c, x, base, s, t) {
+  const bob = Math.sin(t * 2.2) * 1.5 * s, y = base + bob;
+  // tail fan
+  const cols = ['#8b3a1a', '#c8551b', '#e8a23a', '#d0381f', '#a8642a', '#e8c25a', '#c8551b'];
+  for (let i = 0; i < 7; i++) {
+    const a = Math.PI * (1.08 + i * 0.14) + Math.sin(t * 1.5) * 0.03;
+    c.fillStyle = cols[i]; c.beginPath();
+    c.ellipse(x + 4 * s + Math.cos(a) * 20 * s, y - 34 * s + Math.sin(a) * 20 * s, 8 * s, 19 * s, a + Math.PI / 2, 0, 7); c.fill();
+  }
+  // legs
+  c.strokeStyle = '#e09a2a'; c.lineWidth = 2.5 * s; c.lineCap = 'round';
+  [[-5, 0], [6, 0]].forEach(([dx]) => { c.beginPath(); c.moveTo(x + dx * s, y - 12 * s); c.lineTo(x + dx * s, y); c.lineTo(x + (dx - 4) * s, y + 1 * s); c.moveTo(x + dx * s, y); c.lineTo(x + (dx + 4) * s, y + 1 * s); c.stroke(); });
+  // body
+  c.fillStyle = '#6b3b1f'; c.beginPath(); c.ellipse(x, y - 24 * s, 15 * s, 17 * s, 0, 0, 7); c.fill();
+  c.fillStyle = '#8a4e28'; c.beginPath(); c.ellipse(x - 2 * s, y - 20 * s, 9 * s, 11 * s, 0, 0, 7); c.fill();
+  // neck + head
+  c.fillStyle = '#7a4a2a'; c.beginPath(); c.ellipse(x - 6 * s, y - 44 * s, 6 * s, 9 * s, -0.2, 0, 7); c.fill();
+  c.fillStyle = '#9a6a4a'; c.beginPath(); c.arc(x - 7 * s, y - 53 * s, 7 * s, 0, 7); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(x - 10 * s, y - 55 * s, 2.4 * s, 0, 7); c.fill();
+  c.fillStyle = '#111'; c.beginPath(); c.arc(x - 10.5 * s, y - 55 * s, 1.2 * s, 0, 7); c.fill();
+  c.fillStyle = '#f2b233'; c.beginPath(); c.moveTo(x - 13 * s, y - 53 * s); c.lineTo(x - 19 * s, y - 51 * s); c.lineTo(x - 13 * s, y - 49.5 * s); c.fill();
+  c.fillStyle = '#d42a2a'; c.beginPath(); c.ellipse(x - 14 * s, y - 46 * s, 2.2 * s, 4.5 * s, 0.2, 0, 7); c.fill();
+  // wing reaching to the stake
+  c.fillStyle = '#5a2f16'; c.beginPath(); c.ellipse(x - 14 * s, y - 27 * s, 13 * s, 5 * s, -0.25 + Math.sin(t * 2.2) * 0.04, 0, 7); c.fill();
+}
+function drawSanta(c, x, base, s, t) {
+  const bob = Math.sin(t * 2) * 1.5 * s, y = base + bob;
+  // boots
+  c.fillStyle = '#1b1b1b'; c.beginPath(); c.ellipse(x - 6 * s, y - 2 * s, 7 * s, 4 * s, 0, 0, 7); c.ellipse(x + 8 * s, y - 2 * s, 7 * s, 4 * s, 0, 0, 7); c.fill();
+  // legs
+  c.fillStyle = '#c8202a'; c.fillRect(x - 11 * s, y - 16 * s, 9 * s, 13 * s); c.fillRect(x + 3 * s, y - 16 * s, 9 * s, 13 * s);
+  // coat
+  c.fillStyle = '#d42a2a'; c.beginPath(); c.ellipse(x, y - 30 * s, 17 * s, 19 * s, 0, 0, 7); c.fill();
+  c.fillStyle = '#f4f4f4'; c.fillRect(x - 2 * s, y - 46 * s, 4 * s, 32 * s);         // fur trim
+  c.fillStyle = '#1b1b1b'; c.fillRect(x - 17 * s, y - 25 * s, 34 * s, 5 * s);        // belt
+  c.fillStyle = '#f2c14e'; c.fillRect(x - 4 * s, y - 26 * s, 8 * s, 7 * s); c.fillStyle = '#1b1b1b'; c.fillRect(x - 2 * s, y - 24.5 * s, 4 * s, 4 * s);
+  // head
+  c.fillStyle = '#f2c9a8'; c.beginPath(); c.arc(x, y - 55 * s, 9 * s, 0, 7); c.fill();
+  c.fillStyle = '#f7f7f7'; c.beginPath(); c.ellipse(x, y - 47 * s, 11 * s, 9 * s, 0, 0, Math.PI); c.fill();   // beard
+  c.beginPath(); c.arc(x, y - 47 * s, 10.5 * s, Math.PI, 0); c.fill();
+  c.fillStyle = '#f2c9a8'; c.beginPath(); c.ellipse(x, y - 55 * s, 7 * s, 5 * s, 0, 0, 7); c.fill();
+  c.fillStyle = '#e7a58a'; c.beginPath(); c.arc(x - 1 * s, y - 53 * s, 2 * s, 0, 7); c.fill();               // nose
+  c.fillStyle = '#222'; c.beginPath(); c.arc(x - 4 * s, y - 57 * s, 1.2 * s, 0, 7); c.arc(x + 3 * s, y - 57 * s, 1.2 * s, 0, 7); c.fill();
+  c.fillStyle = '#f7f7f7'; c.fillRect(x - 6 * s, y - 51 * s, 12 * s, 2.5 * s);                                 // moustache
+  // hat
+  c.fillStyle = '#d42a2a'; c.beginPath(); c.moveTo(x - 10 * s, y - 61 * s); c.quadraticCurveTo(x + 2 * s, y - 80 * s, x + 16 * s, y - 70 * s + Math.sin(t * 2) * 1.5 * s); c.lineTo(x + 10 * s, y - 61 * s); c.fill();
+  c.fillStyle = '#f7f7f7'; c.fillRect(x - 11 * s, y - 63 * s, 22 * s, 5 * s);
+  c.beginPath(); c.arc(x + 16 * s, y - 70 * s + Math.sin(t * 2) * 1.5 * s, 3.5 * s, 0, 7); c.fill();
+  // arm + mitten reaching to the stake
+  c.strokeStyle = '#d42a2a'; c.lineWidth = 7 * s; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(x - 10 * s, y - 38 * s); c.lineTo(x - 22 * s, y - 34 * s + Math.sin(t * 2) * 1 * s); c.stroke();
+  c.fillStyle = '#2d6a3a'; c.beginPath(); c.arc(x - 24 * s, y - 34 * s + Math.sin(t * 2) * 1 * s, 4.5 * s, 0, 7); c.fill();
+}
+
 function drawScene(now) {
   const t = now / 1000;
   const dpr = Math.min(devicePixelRatio || 1, 2), W = cv.clientWidth, H = cv.clientHeight;
@@ -497,9 +565,15 @@ function drawScene(now) {
   }
 
   // snow stake (red & white) on the right
-  const stakeW = narrow ? 10 : 12, stakeX = W - stakeW - (narrow ? 16 : 26);
+  const holiday = holidayNow(), ms = (H / 300) * (narrow ? 0.95 : 1.1), mascotW = holiday ? 36 * ms : 0;
+  const stakeW = narrow ? 10 : 12, stakeX = W - stakeW - (narrow ? 16 : 26) - mascotW;
   for (let v = 0; v < maxIn; v += 6) { c.fillStyle = (v / 6) % 2 ? '#f4f7fb' : '#d8343f'; c.fillRect(stakeX, yIn(Math.min(maxIn, v + 6)), stakeW, yIn(v) - yIn(Math.min(maxIn, v + 6))); }
   if (S.depth != null) { c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.ellipse(stakeX + stakeW / 2, snowY + 3, stakeW * 1.6, 5, 0, 0, 7); c.fill(); }
+
+  if (holiday) {
+    const base = Math.min(H - 6, Math.max(snowY + 4, top + 85 * ms)), mx = stakeX + stakeW + 26 * ms;
+    (holiday === 'turkey' ? drawTurkey : drawSanta)(sctx, mx, base, ms, t);
+  }
 
   // inch scale on the left
   c.font = '600 11px Barlow, sans-serif'; c.textAlign = 'right'; c.textBaseline = 'middle';
