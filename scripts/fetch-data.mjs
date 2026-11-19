@@ -45,13 +45,16 @@ export function parseReport(html) {
     .replace(/&#\d+;/g, ' ');
   const lines = text.split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const idx = re => lines.findIndex(l => re.test(l));
-  const after = (re, n = 1) => { const i = idx(re); return i < 0 ? null : lines[i + n] ?? null; };
+  // Blank fields on the ski area's page (common early season) would otherwise pick up the next label as the value
+  const LABELS = /^(Updated|Ski Patroller|Summit Snow Depth|Midway Snow Depth|Latest Storm|Snowfall YTD|Snowfall in the last|\d+ (hours?|days?)|Skies:?|Current Skies|Current Weather|Temperature|Yesterday'?s High|Forecast|Last Night'?s Low|Road Conditions|Mountain Conditions|Surface Conditions|Percentage Open|Skii?able Acres|Number of Lifts|Lifts Open|Terrain Open|Wate?r ?fall Area|Alberta Peak Area|Knife Ridge|Hor(se)?shoe Bowl Area|Nordic Loop|Pick of the Hill|Events & Comments|Hike-To Terrain Report|Wolf Creek Terrain Report|Grooming Report)\b/i;
+  const isLabel = l => LABELS.test(l) || /:$/.test(l);
+  const after = (re, n = 1) => { const i = idx(re); const v = i < 0 ? null : lines[i + n] ?? null; return v && !isLabel(v) ? v : null; };
   const inline = re => { const i = idx(re); if (i < 0) return null; const v = lines[i].replace(re, '').replace(/^[:\s-]+/, '').trim(); return v || lines[i + 1] || null; };
 
   // "Snowfall in the last..." block: 24 hours / 48 hours / 72 hours / 7 days
   const start = idx(/Snowfall in the last/i);
   const block = start >= 0 ? lines.slice(start, start + 14) : lines;
-  const inBlock = re => { const i = block.findIndex(l => re.test(l)); return i < 0 ? null : num(block[i + 1]); };
+  const inBlock = re => { const i = block.findIndex(l => re.test(l)); return i < 0 || isLabel(block[i + 1] ?? '') ? null : num(block[i + 1]); };
 
   const r = {
     updated: inline(/^Updated:?/i),
@@ -208,7 +211,7 @@ async function fetchAvalanche() {
   if (!f) throw new Error('No CAIC zone found for Wolf Creek');
   const p = f.properties;
   return {
-    zone: p.name, level: p.danger_level ?? null, danger: p.danger ?? null, advice: p.travel_advice ?? null,
+    zone: !p.name || /^caic zone$/i.test(p.name) ? 'Wolf Creek Pass area' : p.name, level: p.danger_level ?? null, danger: p.danger ?? null, advice: p.travel_advice ?? null,
     start: p.start_date ?? null, end: p.end_date ?? null, offSeason: !!p.off_season,
     link: p.link || 'https://avalanche.state.co.us/',
   };
