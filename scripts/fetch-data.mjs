@@ -271,7 +271,8 @@ async function fetchRoad() {
   const order = { closure: 0, chains: 1, winter: 2, incident: 3, work: 4 };
   items.sort((a, b) => order[a.kind] - order[b.kind]);
   const seen = new Set();
-  const unique = items.filter(i => { const k = i.id != null ? String(i.id) : i.kind + i.title; // CDOT lists one event under several categories if (seen.has(k)) return false; seen.add(k); return true; });
+  // CDOT lists one event under several categories, so drop repeats
+  const unique = items.filter(i => { const k = i.id != null ? String(i.id) : i.kind + i.title; if (seen.has(k)) return false; seen.add(k); return true; });
   return {
     items: unique, closed: unique.some(i => i.kind === 'closure'), chains: unique.some(i => i.kind === 'chains'),
     partial: failed.length ? failed : undefined, link: 'https://www.cotrip.org/',
