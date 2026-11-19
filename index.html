@@ -550,8 +550,9 @@ function drawScene(now) {
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const c = sctx; c.setTransform(dpr, 0, 0, dpr, 0, 0);
   const S = scene.d || {}, narrow = W < 520;
-  const padL = narrow ? 34 : 44, top = 30, bottom = H - 10;
-  const maxIn = Math.max(48, ...[S.depth, ...(S.refs || []).map(r => r.v)].filter(v => v != null).map(v => v * 1.35));
+  const padL = narrow ? 40 : 48, top = 30, bottom = H - 10;
+  // Scale so today's snow sits about a third of the way up (room for a 100"+ March base), rounded to a whole foot
+  const maxIn = Math.ceil(Math.max(60, (S.depth ?? 0) * 3, ...(S.refs || []).map(r => r.v * 1.6).filter(v => v > 0)) / 12) * 12;
   const yIn = v => bottom - (bottom - top) * v / maxIn;
 
   // sky: night vs day in Mountain time
@@ -598,7 +599,8 @@ function drawScene(now) {
   // snow stake (red & white) on the right
   const holiday = holidayNow(), ms = (H / 300) * (narrow ? 0.95 : 1.1), mascotW = holiday ? 36 * ms : 0;
   const stakeW = narrow ? 10 : 12, stakeX = W - stakeW - (narrow ? 16 : 26) - mascotW;
-  for (let v = 0; v < maxIn; v += 6) { c.fillStyle = (v / 6) % 2 ? '#f4f7fb' : '#d8343f'; c.fillRect(stakeX, yIn(Math.min(maxIn, v + 6)), stakeW, yIn(v) - yIn(Math.min(maxIn, v + 6))); }
+  const band = maxIn > 150 ? 12 : 6;
+  for (let v = 0; v < maxIn; v += band) { c.fillStyle = (v / band) % 2 ? '#f4f7fb' : '#d8343f'; c.fillRect(stakeX, yIn(Math.min(maxIn, v + band)), stakeW, yIn(v) - yIn(Math.min(maxIn, v + band))); }
   if (S.depth != null) { c.fillStyle = 'rgba(255,255,255,.95)'; c.beginPath(); c.ellipse(stakeX + stakeW / 2, snowY + 3, stakeW * 1.6, 5, 0, 0, 7); c.fill(); }
 
   if (lightsNow()) drawLights(c, stakeX, stakeW, yIn(maxIn) + 4, snowY - 2, t, reduceMotion.matches);
@@ -610,7 +612,7 @@ function drawScene(now) {
 
   // inch scale on the left
   c.font = '600 11px Barlow, sans-serif'; c.textAlign = 'right'; c.textBaseline = 'middle';
-  const step = maxIn > 120 ? 24 : maxIn > 72 ? 12 : 12;
+  const step = maxIn > 240 ? 48 : maxIn > 120 ? 24 : 12;
   for (let v = 0; v <= maxIn; v += step) { const y = yIn(v); if (y < top + 6) continue; c.fillStyle = 'rgba(10,22,38,.55)'; c.fillRect(0, y - 8, padL - 4, 16); c.fillStyle = '#eef5fc'; c.fillText(v + '″', padL - 8, y); }
 
   // reference lines, labels right-aligned beside the stake and nudged apart so they never overlap
