@@ -685,6 +685,8 @@ async function go() {
 $('#refresh').onclick = go;
 go();
 setInterval(go, 10 * 60e3);
+// Keep a backup copy on the phone so a GitHub outage shows the last numbers, not an error page
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
