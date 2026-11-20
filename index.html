@@ -549,7 +549,7 @@ function drawScene(now) {
   if (!W) return;
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const c = sctx; c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const S = scene.d || {}, narrow = W < 520;
+  const S = scene.d || { intensity: 0.3 }, narrow = W < 520;   // gentle snow while data loads
   const padL = narrow ? 40 : 48, top = 30, bottom = H - 10;
   // Scale so today's snow sits about a third of the way up (room for a 100"+ March base), rounded to a whole foot
   const maxIn = Math.ceil(Math.max(60, (S.depth ?? 0) * 3, ...(S.refs || []).map(r => r.v * 1.6).filter(v => v > 0)) / 12) * 12;
