@@ -621,7 +621,7 @@ function drawScene(now) {
 
   if (holiday) {
     const base = Math.min(H - 6, Math.max(snowY + 4, top + 85 * ms)), mx = stakeX + stakeW + 26 * ms;
-    (holiday === 'turkey' ? drawTurkey : drawSanta)(sctx, mx, base, ms, t);
+    (holiday === 'turkey' ? drawTurkey : drawSanta)(sctx, mx, base, ms, 0);   // 0 = hold still, one arm raised in a hello pose
   }
 
   // inch scale on the left
