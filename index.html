@@ -516,6 +516,12 @@ function drawTurkey(c, x, base, s, t) {
   c.fillStyle = '#d42a2a'; c.beginPath(); c.ellipse(x - 14 * s, y - 46 * s, 2.2 * s, 4.5 * s, 0.2, 0, 7); c.fill();
   // wing reaching to the stake
   c.fillStyle = '#5a2f16'; c.beginPath(); c.ellipse(x - 14 * s, y - 27 * s, 13 * s, 5 * s, -0.25 + Math.sin(t * 2.2) * 0.04, 0, 7); c.fill();
+  // other wing up, waving hello
+  const wave = -0.85 + Math.sin(t * 6) * 0.45;
+  c.save(); c.translate(x + 11 * s, y - 32 * s); c.rotate(wave);
+  c.fillStyle = '#9a5a2e'; c.beginPath(); c.ellipse(9 * s, 0, 11 * s, 4.5 * s, 0, 0, 7); c.fill();
+  c.fillStyle = '#f2b233'; [[16, -2], [18, 0], [16, 2]].forEach(([fx, fy]) => { c.beginPath(); c.ellipse(fx * s, fy * s, 4 * s, 1.6 * s, fy * 0.15, 0, 7); c.fill(); });
+  c.restore();
 }
 function drawSanta(c, x, base, s, t) {
   const bob = Math.sin(t * 2) * 1.5 * s, y = base + bob;
@@ -544,6 +550,11 @@ function drawSanta(c, x, base, s, t) {
   c.strokeStyle = '#d42a2a'; c.lineWidth = 7 * s; c.lineCap = 'round';
   c.beginPath(); c.moveTo(x - 10 * s, y - 38 * s); c.lineTo(x - 22 * s, y - 34 * s + Math.sin(t * 2) * 1 * s); c.stroke();
   c.fillStyle = '#2d6a3a'; c.beginPath(); c.arc(x - 24 * s, y - 34 * s + Math.sin(t * 2) * 1 * s, 4.5 * s, 0, 7); c.fill();
+  // other arm up, waving hello
+  const wave = -0.95 + Math.sin(t * 6) * 0.45, sx = x + 14 * s, sy = y - 40 * s, hx = sx + Math.cos(wave) * 21 * s, hy = sy + Math.sin(wave) * 21 * s;
+  c.strokeStyle = '#d42a2a'; c.lineWidth = 7 * s; c.beginPath(); c.moveTo(sx, sy); c.lineTo(hx, hy); c.stroke();
+  c.fillStyle = '#f4f4f4'; c.beginPath(); c.arc(sx + Math.cos(wave) * 16 * s, sy + Math.sin(wave) * 16 * s, 4 * s, 0, 7); c.fill();   // fur cuff
+  c.fillStyle = '#2d6a3a'; c.beginPath(); c.arc(hx, hy, 4.8 * s, 0, 7); c.fill();
 }
 
 function drawScene(now) {
