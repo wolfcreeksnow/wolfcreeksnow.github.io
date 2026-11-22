@@ -439,7 +439,8 @@ function sceneData(d) {
   const intensity = /heavy/i.test(p0) ? 1 : snowingNow ? .65 : /snow/i.test(p0) ? .3 : (s?.sensor?.depthGain24 > 0 ? .2 : .06);
   const wind = Number((d?.forecast?.periods?.[0]?.wind || '').match(/(\d+)\s*mph/)?.[1] || 8);
   return {
-    depth: L?.depth ?? s?.sensor?.depthNow ?? null,
+    // Hourly summit sensor reading (current), falling back to yesterday's daily value if the hourly feed is missing or stale
+    depth: (s?.sensor?.depthNow != null && (Date.now() - Date.parse(String(s.sensor.asOf).replace(' ', 'T') + ':00-07:00')) < 12 * 36e5 ? s.sensor.depthNow : null) ?? L?.depth ?? s?.sensor?.depthNow ?? null,
     refs: [
       normalDepth(L, at(s?.season?.current?.depthMedian)),
       { label: '5-season avg', v: at(s?.season?.avg5?.depth), color: '#f2c14e', dash: [] },
