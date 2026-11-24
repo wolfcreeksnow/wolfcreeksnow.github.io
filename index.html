@@ -493,7 +493,7 @@ function drawLights(c, x, w, yTop, yBot, t, still) {
   }
   c.globalAlpha = 1;
 }
-function drawTurkey(c, x, base, s, t) {
+function drawTurkey(c, x, base, s, t, waveT = t) {
   const bob = Math.sin(t * 2.2) * 1.5 * s, y = base + bob;
   // tail fan
   const cols = ['#8b3a1a', '#c8551b', '#e8a23a', '#d0381f', '#a8642a', '#e8c25a', '#c8551b'];
@@ -518,7 +518,7 @@ function drawTurkey(c, x, base, s, t) {
   // wing reaching to the stake
   c.fillStyle = '#5a2f16'; c.beginPath(); c.ellipse(x - 14 * s, y - 27 * s, 13 * s, 5 * s, -0.25 + Math.sin(t * 2.2) * 0.04, 0, 7); c.fill();
   // other wing up, waving hello
-  const wave = -0.85 + Math.sin(t * 6) * 0.45;
+  const wave = -0.85 + Math.sin(waveT * 6) * 0.45;
   c.save(); c.translate(x + 11 * s, y - 32 * s); c.rotate(wave);
   c.fillStyle = '#9a5a2e'; c.beginPath(); c.ellipse(9 * s, 0, 11 * s, 4.5 * s, 0, 0, 7); c.fill();
   c.fillStyle = '#f2b233'; [[16, -2], [18, 0], [16, 2]].forEach(([fx, fy]) => { c.beginPath(); c.ellipse(fx * s, fy * s, 4 * s, 1.6 * s, fy * 0.15, 0, 7); c.fill(); });
@@ -622,7 +622,8 @@ function drawScene(now) {
 
   if (holiday) {
     const base = Math.min(H - 6, Math.max(snowY + 4, top + 85 * ms)), mx = stakeX + stakeW + 26 * ms;
-    (holiday === 'turkey' ? drawTurkey : drawSanta)(sctx, mx, base, ms, 0);   // 0 = hold still, one arm raised in a hello pose
+    // Body holds still (0); the turkey's raised wing waves, Santa holds his hello pose
+    if (holiday === 'turkey') drawTurkey(sctx, mx, base, ms, 0, t); else drawSanta(sctx, mx, base, ms, 0);
   }
 
   // inch scale on the left
