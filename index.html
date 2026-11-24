@@ -524,7 +524,7 @@ function drawTurkey(c, x, base, s, t, waveT = t) {
   c.fillStyle = '#f2b233'; [[16, -2], [18, 0], [16, 2]].forEach(([fx, fy]) => { c.beginPath(); c.ellipse(fx * s, fy * s, 4 * s, 1.6 * s, fy * 0.15, 0, 7); c.fill(); });
   c.restore();
 }
-function drawSanta(c, x, base, s, t) {
+function drawSanta(c, x, base, s, t, waveT = t) {
   const bob = Math.sin(t * 2) * 1.5 * s, y = base + bob;
   // boots
   c.fillStyle = '#1b1b1b'; c.beginPath(); c.ellipse(x - 6 * s, y - 2 * s, 7 * s, 4 * s, 0, 0, 7); c.ellipse(x + 8 * s, y - 2 * s, 7 * s, 4 * s, 0, 0, 7); c.fill();
@@ -552,7 +552,7 @@ function drawSanta(c, x, base, s, t) {
   c.beginPath(); c.moveTo(x - 10 * s, y - 38 * s); c.lineTo(x - 22 * s, y - 34 * s + Math.sin(t * 2) * 1 * s); c.stroke();
   c.fillStyle = '#2d6a3a'; c.beginPath(); c.arc(x - 24 * s, y - 34 * s + Math.sin(t * 2) * 1 * s, 4.5 * s, 0, 7); c.fill();
   // other arm up, waving hello
-  const wave = -0.95 + Math.sin(t * 6) * 0.45, sx = x + 14 * s, sy = y - 40 * s, hx = sx + Math.cos(wave) * 21 * s, hy = sy + Math.sin(wave) * 21 * s;
+  const wave = -0.95 + Math.sin(waveT * 6) * 0.45, sx = x + 14 * s, sy = y - 40 * s, hx = sx + Math.cos(wave) * 21 * s, hy = sy + Math.sin(wave) * 21 * s;
   c.strokeStyle = '#d42a2a'; c.lineWidth = 7 * s; c.beginPath(); c.moveTo(sx, sy); c.lineTo(hx, hy); c.stroke();
   c.fillStyle = '#f4f4f4'; c.beginPath(); c.arc(sx + Math.cos(wave) * 16 * s, sy + Math.sin(wave) * 16 * s, 4 * s, 0, 7); c.fill();   // fur cuff
   c.fillStyle = '#2d6a3a'; c.beginPath(); c.arc(hx, hy, 4.8 * s, 0, 7); c.fill();
@@ -622,8 +622,8 @@ function drawScene(now) {
 
   if (holiday) {
     const base = Math.min(H - 6, Math.max(snowY + 4, top + 85 * ms)), mx = stakeX + stakeW + 26 * ms;
-    // Body holds still (0); the turkey's raised wing waves, Santa holds his hello pose
-    if (holiday === 'turkey') drawTurkey(sctx, mx, base, ms, 0, t); else drawSanta(sctx, mx, base, ms, 0);
+    // Body holds still (0); only the raised wing / arm waves
+    (holiday === 'turkey' ? drawTurkey : drawSanta)(sctx, mx, base, ms, 0, t);
   }
 
   // inch scale on the left
